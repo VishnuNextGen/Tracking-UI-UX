@@ -1,0 +1,616 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // PILLAR 1: DEFAULT DENY CATCH-ALL
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // GLOBAL HELPER FUNCTIONS
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Pure token check (zero DB lookups) safe for single-doc AND list rules
+    function isBootstrappedAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.email is string &&
+        (request.auth.token.email.lower() == 'techguruinkerala@gmail.com' ||
+         request.auth.token.email.lower() == 'tacstem@gmail.com' ||
+         request.auth.token.email.lower() == 'pvvishnupscaspirant@gmail.com');
+    }
+
+    // Single-document admin check supporting both bootstrapped and promoted admins
+    function isAdmin() {
+      return isBootstrappedAdmin() ||
+        (isSignedIn() &&
+         request.auth.token.email_verified == true &&
+         exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isValidId(id) {
+      return id is string &&
+        id.size() >= 1 &&
+        id.size() <= 128 &&
+        id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidEmail(val) {
+      return val is string &&
+        val.size() >= 3 &&
+        val.size() <= 254 &&
+        val.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+    }
+
+    function isValidPersonas(personas) {
+      return personas is list &&
+        personas.size() >= 1 &&
+        personas.size() <= 5 &&
+        personas.hasOnly(['analyst', 'coach', 'content_creator']);
+    }
+
+    function isBoundedMetric(val) {
+      return val is number && val >= 0 && val <= 99999999999999;
+    }
+
+    // =========================================================================
+    // ENTITY SCHEMA VALIDATORS
+    // =========================================================================
+    function isValidAdminRole(data, userId) {
+      return data.keys().hasAll(['userId', 'email', 'grantedBy', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['userId', 'email', 'grantedBy', 'createdAt', 'updatedAt']) &&
+        data.userId is string && data.userId == userId &&
+        isValidEmail(data.email) &&
+        data.grantedBy is string && data.grantedBy.size() >= 1 && data.grantedBy.size() <= 128 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserEntitlement(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'displayName', 'email', 'photoURL', 'personas',
+          'onboarded', 'plan', 'isAdmin', 'previousPlan', 'demotedAtMs',
+          'notes', 'createdAtMs', 'planUpdatedAtMs', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'displayName', 'email', 'photoURL', 'personas',
+          'onboarded', 'plan', 'isAdmin', 'previousPlan', 'demotedAtMs',
+          'notes', 'createdAtMs', 'planUpdatedAtMs', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string && data.userId == userId &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        isValidEmail(data.email) &&
+        data.photoURL is string && data.photoURL.size() <= 1024 &&
+        isValidPersonas(data.personas) &&
+        data.onboarded is bool &&
+        data.plan in ['free', 'pro'] &&
+        data.isAdmin is bool &&
+        data.previousPlan in ['none', 'free', 'pro'] &&
+        isBoundedMetric(data.demotedAtMs) &&
+        data.notes is string && data.notes.size() <= 1000 &&
+        isBoundedMetric(data.createdAtMs) &&
+        isBoundedMetric(data.planUpdatedAtMs) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserStats(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'displayName', 'email', 'personas', 'plan',
+          'sessionsCount', 'videoProjectsCount', 'liveProjectsCount',
+          'boardProjectsCount', 'batchesCount', 'totalProjectsCount',
+          'totalEventsCount', 'totalActiveTagsCount', 'totalFreezeFramesCount',
+          'totalShapesCount', 'totalPlaylistClipsCount', 'projects',
+          'createdAtMs', 'lastActiveAtMs', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'displayName', 'email', 'personas', 'plan',
+          'sessionsCount', 'videoProjectsCount', 'liveProjectsCount',
+          'boardProjectsCount', 'batchesCount', 'totalProjectsCount',
+          'totalEventsCount', 'totalActiveTagsCount', 'totalFreezeFramesCount',
+          'totalShapesCount', 'totalPlaylistClipsCount', 'projects',
+          'createdAtMs', 'lastActiveAtMs', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string && data.userId == userId &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        isValidEmail(data.email) &&
+        data.personas is list && data.personas.size() <= 5 &&
+        data.personas.hasOnly(['analyst', 'coach', 'content_creator']) &&
+        data.plan in ['free', 'pro'] &&
+        isBoundedMetric(data.sessionsCount) &&
+        isBoundedMetric(data.videoProjectsCount) &&
+        isBoundedMetric(data.liveProjectsCount) &&
+        isBoundedMetric(data.boardProjectsCount) &&
+        isBoundedMetric(data.batchesCount) &&
+        isBoundedMetric(data.totalProjectsCount) &&
+        isBoundedMetric(data.totalEventsCount) &&
+        isBoundedMetric(data.totalActiveTagsCount) &&
+        isBoundedMetric(data.totalFreezeFramesCount) &&
+        isBoundedMetric(data.totalShapesCount) &&
+        isBoundedMetric(data.totalPlaylistClipsCount) &&
+        data.projects is map && data.projects.size() <= 200 &&
+        isBoundedMetric(data.createdAtMs) &&
+        isBoundedMetric(data.lastActiveAtMs) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUpgradeRequest(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'displayName', 'email', 'personas', 'organization',
+          'message', 'status', 'reviewedBy', 'adminNote',
+          'createdAtMs', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'displayName', 'email', 'personas', 'organization',
+          'message', 'status', 'reviewedBy', 'adminNote',
+          'createdAtMs', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string && data.userId == userId &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        isValidEmail(data.email) &&
+        data.personas is list && data.personas.size() <= 5 &&
+        data.personas.hasOnly(['analyst', 'coach', 'content_creator']) &&
+        data.organization is string && data.organization.size() <= 160 &&
+        data.message is string && data.message.size() >= 1 && data.message.size() <= 1000 &&
+        data.status in ['pending', 'approved', 'declined'] &&
+        data.reviewedBy is string && data.reviewedBy.size() <= 254 &&
+        data.adminNote is string && data.adminNote.size() <= 500 &&
+        isBoundedMetric(data.createdAtMs) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidNotification(data, notificationId) {
+      return data.keys().hasAll([
+          'id', 'title', 'message', 'category', 'targetAudience',
+          'priority', 'linkType', 'link', 'sentBy', 'authorId',
+          'visibility', 'timestampMs', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'title', 'message', 'category', 'targetAudience',
+          'priority', 'linkType', 'link', 'sentBy', 'authorId',
+          'visibility', 'timestampMs', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id == notificationId &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        data.message is string && data.message.size() >= 1 && data.message.size() <= 2500 &&
+        data.category in ['announcement', 'tutorial', 'feature', 'update', 'alert', 'system'] &&
+        data.targetAudience in ['all', 'analysts', 'coaches', 'content_creators'] &&
+        data.priority in ['normal', 'high'] &&
+        data.linkType in ['tutorial', 'url', 'tab', 'external', 'none'] &&
+        data.link is string && data.link.size() <= 500 &&
+        data.sentBy is string && data.sentBy.size() >= 1 && data.sentBy.size() <= 100 &&
+        data.authorId is string && data.authorId.size() >= 1 && data.authorId.size() <= 128 &&
+        data.visibility in ['public', 'draft'] &&
+        isBoundedMetric(data.timestampMs) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTutorial(data, tutorialId) {
+      return data.keys().hasAll([
+          'id', 'title', 'description', 'youtubeUrl', 'youtubeId',
+          'folderId', 'folderName', 'duration', 'recommended',
+          'tags', 'author', 'visibility', 'createdAtMs', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'title', 'description', 'youtubeUrl', 'youtubeId',
+          'folderId', 'folderName', 'duration', 'recommended',
+          'tags', 'author', 'visibility', 'createdAtMs', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id == tutorialId &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.description is string && data.description.size() <= 2000 &&
+        data.youtubeUrl is string && data.youtubeUrl.size() >= 1 && data.youtubeUrl.size() <= 500 &&
+        data.youtubeId is string && data.youtubeId.size() == 11 &&
+        data.youtubeId.matches('^[a-zA-Z0-9_\\-]{11}$') &&
+        data.folderId is string && data.folderId.size() >= 1 && data.folderId.size() <= 128 &&
+        data.folderName is string && data.folderName.size() >= 1 && data.folderName.size() <= 120 &&
+        data.duration is string && data.duration.size() >= 1 && data.duration.size() <= 20 &&
+        data.recommended is bool &&
+        data.tags is list && data.tags.size() <= 15 &&
+        data.author is string && data.author.size() >= 1 && data.author.size() <= 100 &&
+        data.visibility in ['public', 'draft'] &&
+        isBoundedMetric(data.createdAtMs) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTutorialFolder(data, folderId) {
+      return data.keys().hasAll([
+          'id', 'name', 'description', 'iconName', 'order',
+          'visibility', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'name', 'description', 'iconName', 'order',
+          'visibility', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id == folderId &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        data.description is string && data.description.size() <= 500 &&
+        data.iconName is string && data.iconName.size() >= 1 && data.iconName.size() <= 60 &&
+        data.order is number && data.order >= 0 && data.order <= 1000 &&
+        data.visibility in ['public', 'draft'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPlatformSettings(data, settingId) {
+      return data.keys().hasAll([
+          'id', 'freeMaxVideoProjects', 'freeMaxBoardProjects', 'freeAllowBatches',
+          'allowInstantFreeUpgrade', 'announcementEnabled', 'announcementText',
+          'announcementLink', 'academyTitle', 'academySubtitle',
+          'supportContactAddress', 'founderLinkedInUrl', 'visibility',
+          'updatedBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'freeMaxVideoProjects', 'freeMaxBoardProjects', 'freeAllowBatches',
+          'allowInstantFreeUpgrade', 'announcementEnabled', 'announcementText',
+          'announcementLink', 'academyTitle', 'academySubtitle',
+          'supportContactAddress', 'founderLinkedInUrl', 'visibility',
+          'updatedBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id == settingId && settingId == 'global' &&
+        data.freeMaxVideoProjects is number && data.freeMaxVideoProjects >= 1 && data.freeMaxVideoProjects <= 50 &&
+        data.freeMaxBoardProjects is number && data.freeMaxBoardProjects >= 1 && data.freeMaxBoardProjects <= 50 &&
+        data.freeAllowBatches is bool &&
+        data.allowInstantFreeUpgrade is bool &&
+        data.announcementEnabled is bool &&
+        data.announcementText is string && data.announcementText.size() <= 300 &&
+        data.announcementLink is string && data.announcementLink.size() <= 300 &&
+        data.academyTitle is string && data.academyTitle.size() >= 1 && data.academyTitle.size() <= 120 &&
+        data.academySubtitle is string && data.academySubtitle.size() <= 300 &&
+        data.supportContactAddress is string && data.supportContactAddress.size() <= 254 &&
+        data.founderLinkedInUrl is string && data.founderLinkedInUrl.size() <= 300 &&
+        data.visibility == 'public' &&
+        data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // 1. /admins/{userId} (PII Protected, Admin Managed)
+    // =========================================================================
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+
+      allow create: if isValidId(userId) &&
+        isAdmin() &&
+        isValidAdminRole(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId) &&
+        isAdmin() &&
+        isValidAdminRole(incoming(), userId) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['email', 'grantedBy', 'updatedAt']);
+
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 2. /user_entitlements/{userId} (PII Protected, Strict Plan Enforcement)
+    // =========================================================================
+    match /user_entitlements/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+
+      allow create: if isValidId(userId) &&
+        isValidUserEntitlement(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          (
+            isOwner(userId) &&
+            isVerifiedUser() &&
+            request.auth.token.email is string &&
+            incoming().email.lower() == request.auth.token.email.lower() &&
+            incoming().plan == 'free' &&
+            incoming().isAdmin == false &&
+            incoming().previousPlan == 'none' &&
+            incoming().demotedAtMs == 0 &&
+            incoming().notes == ''
+          )
+        );
+
+      allow update: if isValidId(userId) &&
+        isValidUserEntitlement(incoming(), userId) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action A: Owner updating own display profile / onboarding personas only
+          (
+            isOwner(userId) &&
+            isVerifiedUser() &&
+            incoming().email == existing().email &&
+            incoming().plan == existing().plan &&
+            incoming().isAdmin == existing().isAdmin &&
+            incoming().previousPlan == existing().previousPlan &&
+            incoming().demotedAtMs == existing().demotedAtMs &&
+            incoming().notes == existing().notes &&
+            incoming().planUpdatedAtMs == existing().planUpdatedAtMs &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'photoURL', 'personas', 'onboarded', 'updatedAt'
+            ])
+          ) ||
+          // Action B: Self-claim Free -> Pro ONLY when Admin has enabled allowInstantFreeUpgrade
+          (
+            isOwner(userId) &&
+            isVerifiedUser() &&
+            existing().plan == 'free' &&
+            incoming().plan == 'pro' &&
+            incoming().previousPlan == 'free' &&
+            incoming().isAdmin == existing().isAdmin &&
+            incoming().email == existing().email &&
+            exists(/databases/$(database)/documents/app_settings/global) &&
+            get(/databases/$(database)/documents/app_settings/global).data.allowInstantFreeUpgrade == true &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'plan', 'previousPlan', 'planUpdatedAtMs', 'notes', 'updatedAt'
+            ])
+          ) ||
+          // Action C: Administrator promoting/demoting user or managing admin status
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'photoURL', 'personas', 'onboarded', 'plan',
+              'isAdmin', 'previousPlan', 'demotedAtMs', 'notes', 'planUpdatedAtMs', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 3. /user_stats/{userId} (PII Protected, Metadata-Only Numeric Counts)
+    // =========================================================================
+    match /user_stats/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+
+      allow create: if isValidId(userId) &&
+        isValidUserStats(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          (
+            isOwner(userId) &&
+            isVerifiedUser() &&
+            request.auth.token.email is string &&
+            incoming().email.lower() == request.auth.token.email.lower()
+          )
+        );
+
+      allow update: if isValidId(userId) &&
+        isValidUserStats(incoming(), userId) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          (
+            isOwner(userId) &&
+            isVerifiedUser() &&
+            incoming().email.lower() == existing().email.lower()
+          )
+        ) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'personas', 'plan', 'sessionsCount',
+          'videoProjectsCount', 'liveProjectsCount', 'boardProjectsCount',
+          'batchesCount', 'totalProjectsCount', 'totalEventsCount',
+          'totalActiveTagsCount', 'totalFreezeFramesCount', 'totalShapesCount',
+          'totalPlaylistClipsCount', 'projects', 'lastActiveAtMs', 'updatedAt'
+        ]);
+
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 4. /upgrade_requests/{userId} (PII Protected, User Submits -> Admin Reviews)
+    // =========================================================================
+    match /upgrade_requests/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+
+      allow create: if isValidId(userId) &&
+        isOwner(userId) &&
+        isVerifiedUser() &&
+        request.auth.token.email is string &&
+        incoming().email.lower() == request.auth.token.email.lower() &&
+        incoming().status == 'pending' &&
+        incoming().reviewedBy == '' &&
+        incoming().adminNote == '' &&
+        isValidUpgradeRequest(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId) &&
+        isValidUpgradeRequest(incoming(), userId) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action A: Owner re-submitting or editing their pending request
+          (
+            isOwner(userId) &&
+            isVerifiedUser() &&
+            incoming().email == existing().email &&
+            incoming().status == 'pending' &&
+            incoming().reviewedBy == '' &&
+            incoming().adminNote == '' &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'personas', 'organization', 'message',
+              'status', 'reviewedBy', 'adminNote', 'createdAtMs', 'updatedAt'
+            ])
+          ) ||
+          // Action B: Admin approving or declining request
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'reviewedBy', 'adminNote', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+    }
+
+    // =========================================================================
+    // 5. /notifications/{notificationId} (Admin Broadcasts, Authenticated Read)
+    // =========================================================================
+    match /notifications/{notificationId} {
+      allow get: if isValidId(notificationId) &&
+        isSignedIn() &&
+        (resource == null || existing().visibility == 'public' || isAdmin());
+
+      allow list: if isSignedIn() &&
+        (existing().visibility == 'public' || isBootstrappedAdmin());
+
+      allow create: if isValidId(notificationId) &&
+        isAdmin() &&
+        incoming().authorId == request.auth.uid &&
+        isValidNotification(incoming(), notificationId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(notificationId) &&
+        isAdmin() &&
+        isValidNotification(incoming(), notificationId) &&
+        incoming().id == existing().id &&
+        incoming().authorId == existing().authorId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'message', 'category', 'targetAudience', 'priority',
+          'linkType', 'link', 'sentBy', 'visibility', 'timestampMs', 'updatedAt'
+        ]);
+
+      allow delete: if isValidId(notificationId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 6. /tutorials/{tutorialId} (Admin Curated Academy, Authenticated Read)
+    // =========================================================================
+    match /tutorials/{tutorialId} {
+      allow get: if isValidId(tutorialId) &&
+        isSignedIn() &&
+        (resource == null || existing().visibility == 'public' || isAdmin());
+
+      allow list: if isSignedIn() &&
+        (existing().visibility == 'public' || isBootstrappedAdmin());
+
+      allow create: if isValidId(tutorialId) &&
+        isAdmin() &&
+        isValidTutorial(incoming(), tutorialId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(tutorialId) &&
+        isAdmin() &&
+        isValidTutorial(incoming(), tutorialId) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'description', 'youtubeUrl', 'youtubeId', 'folderId',
+          'folderName', 'duration', 'recommended', 'tags', 'author',
+          'visibility', 'createdAtMs', 'updatedAt'
+        ]);
+
+      allow delete: if isValidId(tutorialId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 7. /tutorial_folders/{folderId} (Admin Curated Folders, Authenticated Read)
+    // =========================================================================
+    match /tutorial_folders/{folderId} {
+      allow get: if isValidId(folderId) &&
+        isSignedIn() &&
+        (resource == null || existing().visibility == 'public' || isAdmin());
+
+      allow list: if isSignedIn() &&
+        (existing().visibility == 'public' || isBootstrappedAdmin());
+
+      allow create: if isValidId(folderId) &&
+        isAdmin() &&
+        isValidTutorialFolder(incoming(), folderId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(folderId) &&
+        isAdmin() &&
+        isValidTutorialFolder(incoming(), folderId) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'description', 'iconName', 'order', 'visibility', 'updatedAt'
+        ]);
+
+      allow delete: if isValidId(folderId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 8. /app_settings/{settingId} (Single-Doc Global Settings, Admin Write)
+    // =========================================================================
+    match /app_settings/{settingId} {
+      allow get: if settingId == 'global' &&
+        isSignedIn() &&
+        (resource == null || existing().visibility == 'public' || isAdmin());
+
+      allow list: if false;
+
+      allow create: if settingId == 'global' &&
+        isAdmin() &&
+        isValidPlatformSettings(incoming(), settingId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if settingId == 'global' &&
+        isAdmin() &&
+        isValidPlatformSettings(incoming(), settingId) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'freeMaxVideoProjects', 'freeMaxBoardProjects', 'freeAllowBatches',
+          'allowInstantFreeUpgrade', 'announcementEnabled', 'announcementText',
+          'announcementLink', 'academyTitle', 'academySubtitle',
+          'supportContactAddress', 'founderLinkedInUrl', 'updatedBy', 'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+  }
+}

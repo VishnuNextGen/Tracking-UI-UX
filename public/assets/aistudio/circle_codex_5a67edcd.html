@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Telestration Ring - Broadcast 3D</title>
+<style>
+  :root{
+    --bg: #0b6623;
+    --panel: rgba(8, 14, 18, 0.84);
+    --panel-edge: rgba(255,255,255,0.18);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{
+    height:100%;
+    margin:0;
+    background:
+      radial-gradient(circle at 50% 36%, rgba(255,255,255,0.09), transparent 34%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 46px, rgba(0,0,0,0.03) 46px 92px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px) 0 0 / 92px 92px,
+      linear-gradient(0deg, rgba(255,255,255,0.035) 1px, transparent 1px) 0 0 / 92px 92px,
+      var(--bg);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    overflow:hidden;
+    cursor: crosshair;
+  }
+
+  /* Broadcast Telemetry HUD Banner */
+  .hud-hint{
+    position:fixed;
+    top:16px;
+    left:50%;
+    transform:translateX(-50%);
+    padding:7px 16px;
+    border-radius:999px;
+    background:rgba(8, 14, 18, 0.68);
+    border:1px solid rgba(255,255,255,0.15);
+    color:rgba(240,250,255,0.88);
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.9px;
+    text-transform:uppercase;
+    backdrop-filter:blur(10px);
+    box-shadow:0 8px 24px rgba(0,0,0,0.28);
+    pointer-events:none;
+    z-index:900;
+    white-space:nowrap;
+  }
+  .hud-hint span{
+    color:#66f0ff;
+  }
+
+  /* Broadcast Control Dock */
+  .controller{
+    position:fixed;
+    left:50%;
+    bottom:18px;
+    transform:translateX(-50%);
+    display:flex;
+    gap:14px;
+    align-items:center;
+    min-height:58px;
+    padding:10px 18px;
+    color:#f7fbff;
+    background:linear-gradient(180deg, rgba(28,38,45,0.88), var(--panel));
+    border:1px solid var(--panel-edge);
+    border-radius:12px;
+    box-shadow:0 18px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.16);
+    backdrop-filter: blur(14px);
+    user-select:none;
+    z-index:1000;
+    cursor: default;
+  }
+
+  .divider{
+    width:1px;
+    height:26px;
+    background:rgba(255,255,255,0.14);
+  }
+
+  .control-group{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.4px;
+    text-transform:uppercase;
+    white-space:nowrap;
+    cursor:pointer;
+  }
+
+  .controller input[type="range"]{
+    width:115px;
+    accent-color:#66f0ff;
+    cursor:pointer;
+  }
+
+  .controller input[type="color"]{
+    width:32px;
+    height:32px;
+    border:1px solid rgba(255,255,255,0.34);
+    border-radius:6px;
+    padding:2px;
+    background:rgba(255,255,255,0.12);
+    cursor:pointer;
+  }
+
+  .swatches{
+    display:flex;
+    align-items:center;
+    gap:5px;
+  }
+
+  .swatch{
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    border:2px solid rgba(255,255,255,0.35);
+    cursor:pointer;
+    padding:0;
+    transition:transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+  }
+  .swatch:hover{
+    transform:scale(1.15);
+    border-color:#fff;
+  }
+  .swatch.active{
+    border-color:#fff;
+    box-shadow:0 0 10px rgba(255,255,255,0.75);
+    transform:scale(1.12);
+  }
+
+  .controller select{
+    background:rgba(12, 20, 26, 0.9);
+    color:#e9fbff;
+    border:1px solid rgba(255,255,255,0.26);
+    border-radius:7px;
+    padding:6px 10px;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.3px;
+    cursor:pointer;
+    outline:none;
+  }
+  .controller select:hover{
+    border-color:rgba(102,240,255,0.65);
+  }
+
+  .controller input[type="checkbox"]{
+    width:16px;
+    height:16px;
+    accent-color:#66f0ff;
+    cursor:pointer;
+    margin:0;
+  }
+
+  .clear-btn{
+    padding:7px 13px;
+    border-radius:7px;
+    border:1px solid rgba(255,255,255,0.24);
+    background:rgba(255, 65, 85, 0.18);
+    color:#ffeef0;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.4px;
+    text-transform:uppercase;
+    cursor:pointer;
+    transition:background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+  }
+  .clear-btn:hover{
+    background:rgba(255, 65, 85, 0.34);
+    border-color:rgba(255, 120, 135, 0.55);
+  }
+  .clear-btn:active{
+    transform:scale(0.96);
+  }
+
+  #tiltValue{
+    min-width:32px;
+    text-align:right;
+    color:#66f0ff;
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* =====================================================
+     MASTER 3D BROADCAST TELESTRATION RING
+     ===================================================== */
+  .ring{
+    position:absolute;
+    width:148px;
+    height:148px;
+    transform-style:preserve-3d;
+    pointer-events:auto;
+    cursor:grab;
+    --ring-color:#00eaff;
+    --ring-deep:#0089a2;
+    --ring-dark:#004f62;
+    --ring-light:#a8fbff;
+    --ring-hot:#ffffff;
+    --tilt-deg:28deg;
+    --spin-speed:2.35s;
+    --sec-spin-speed:2.85s;
+    --orbit-speed:14s;
+
+    /* Default Segmented Pattern: 8 Tactical Telemetry Bars */
+    --segment-conic: repeating-conic-gradient(
+      from -19deg,
+      #000 0deg 38deg,
+      transparent 38.8deg 45deg
+    );
+  }
+
+  .ring:active{ cursor:grabbing; }
+
+  /* Tactical Pattern Presets for the Outer 3D Segmented Ring */
+  .ring[data-pattern="brackets-4"]{
+    --segment-conic: repeating-conic-gradient(
+      from -34deg,
+      #000 0deg 68deg,
+      transparent 69deg 90deg
+    );
+  }
+
+  .ring[data-pattern="telemetry-8"]{
+    --segment-conic: repeating-conic-gradient(
+      from -19deg,
+      #000 0deg 38deg,
+      transparent 38.8deg 45deg
+    );
+  }
+
+  .ring[data-pattern="stamina-12"]{
+    --segment-conic: repeating-conic-gradient(
+      from -11.5deg,
+      #000 0deg 23deg,
+      transparent 23.8deg 30deg
+    );
+  }
+
+  .ring[data-pattern="asymmetric-hud"]{
+    --segment-conic: conic-gradient(
+      from -52deg,
+      #000 0deg 104deg,
+      transparent 105deg 116deg,
+      #000 117deg 142deg,
+      transparent 143deg 154deg,
+      #000 155deg 172deg,
+      transparent 173deg 180deg,
+      #000 181deg 284deg,
+      transparent 285deg 296deg,
+      #000 297deg 322deg,
+      transparent 323deg 334deg,
+      #000 335deg 352deg,
+      transparent 353deg 360deg
+    );
+  }
+
+  .ring[data-pattern="continuous"]{
+    --segment-conic: conic-gradient(#000 0deg 360deg);
+  }
+
+  .ring .contact-shadow{
+    position:absolute;
+    left:-34px;
+    right:-34px;
+    bottom:-28px;
+    height:54px;
+    border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0.66), rgba(0,0,0,0.3) 50%, transparent 75%);
+    filter:blur(6px);
+    transform:translateZ(-32px) rotateX(72deg);
+    pointer-events:none;
+  }
+
+  /* =====================================================
+     SHARED 3D EXTRUDED RING BAND ARCHITECTURE
+     Both .primary-band and .secondary-band have identical
+     chunky 3D depth extrusion, metallic sheen & bevels.
+     ===================================================== */
+  .ring-band{
+    position:absolute;
+    border-radius:50%;
+    transform-style:preserve-3d;
+    pointer-events:none;
+    --band-width: 34px;
+    --radial-ring-mask: radial-gradient(
+      closest-side,
+      transparent calc(100% - var(--band-width) - 1px),
+      #000 calc(100% - var(--band-width)) calc(100% - 0.5px),
+      transparent 100%
+    );
+  }
+
+  /* Primary Inner 3D Ring: Continuous 34px chunky 3D wall */
+  .ring-band.primary-band{
+    inset:0;
+    --band-width: 34px;
+  }
+
+  /* Secondary Outer 3D Ring:
+     Minimal 5px gap outside primary ring -> inset: -(28px + 5px) = -33px
+     Chunky 28px 3D wall broken into extruded 3D tactical arc bars */
+  .ring-band.secondary-band{
+    inset:-33px;
+    --band-width: 28px;
+    animation:outerTacticalOrbit var(--orbit-speed) linear infinite;
+  }
+
+  .ring.pause-orbit .ring-band.secondary-band{
+    animation-play-state:paused;
+  }
+
+  .ring.hide-secondary .secondary-band{
+    display:none;
+  }
+
+  /* -----------------------------------------------------
+     COMPOSITE MASKING FOR TRUE 3D SEGMENTED BARS
+     Intersects the radial hollow ring mask with the
+     conic tactical segment mask on EVERY 3D depth layer!
+     ----------------------------------------------------- */
+  .primary-band .body-layer,
+  .primary-band .fill-mask,
+  .primary-band .bevel-rim,
+  .primary-band .glass{
+    -webkit-mask-image: var(--radial-ring-mask);
+    mask-image: var(--radial-ring-mask);
+  }
+
+  .secondary-band .body-layer,
+  .secondary-band .fill-mask,
+  .secondary-band .bevel-rim,
+  .secondary-band .glass,
+  .secondary-band .segment-caps{
+    -webkit-mask-image: var(--radial-ring-mask), var(--segment-conic);
+    -webkit-mask-composite: source-in;
+    mask-image: var(--radial-ring-mask), var(--segment-conic);
+    mask-composite: intersect;
+  }
+
+  /* 3D Extruded Depth Sidewall Layers (4 stacked 3D slices) */
+  .ring-band .body-layer{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    pointer-events:none;
+    background:
+      radial-gradient(circle at 35% 18%, rgba(255,255,255,0.3), transparent 26%),
+      conic-gradient(from -28deg,
+        color-mix(in srgb, var(--ring-light), transparent 16%) 0deg,
+        var(--ring-color) 34deg,
+        var(--ring-deep) 106deg,
+        var(--ring-dark) 188deg,
+        color-mix(in srgb, var(--ring-dark), black 32%) 246deg,
+        var(--ring-deep) 318deg,
+        color-mix(in srgb, var(--ring-light), transparent 20%) 360deg);
+    box-shadow:
+      inset 0 5px 7px rgba(255,255,255,0.2),
+      inset 0 -9px 15px rgba(0,0,0,0.58);
+    filter:saturate(1.14);
+  }
+
+  .ring-band .body-layer-1{
+    transform:translate3d(2px, 4px, -4px) scale(0.998);
+    opacity:0.96;
+  }
+
+  .ring-band .body-layer-2{
+    transform:translate3d(4px, 8px, -8px) scale(0.995);
+    opacity:0.86;
+    filter:saturate(1.06) brightness(0.84);
+  }
+
+  .ring-band .body-layer-3{
+    transform:translate3d(6px, 12px, -12px) scale(0.992);
+    opacity:0.74;
+    filter:saturate(0.98) brightness(0.68);
+  }
+
+  .ring-band .body-layer-4{
+    transform:translate3d(8px, 16px, -16px) scale(0.988);
+    opacity:0.58;
+    filter:saturate(0.92) brightness(0.52);
+  }
+
+  /* Top Rotating Broadcast Metallic Fill */
+  .ring-band .fill-mask{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    filter:drop-shadow(0 6px 12px rgba(0,0,0,0.36));
+  }
+
+  .ring-band .fill{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    overflow:hidden;
+    background:
+      radial-gradient(circle at 34% 22%, rgba(255,255,255,0.94) 0 6%, rgba(255,255,255,0.24) 17%, transparent 31%),
+      conic-gradient(from -22deg,
+        var(--ring-hot) 0deg,
+        var(--ring-light) 22deg,
+        var(--ring-color) 72deg,
+        var(--ring-deep) 128deg,
+        var(--ring-dark) 184deg,
+        var(--ring-color) 248deg,
+        var(--ring-light) 304deg,
+        var(--ring-hot) 360deg);
+    animation:broadcastSpin var(--spin-speed) linear infinite;
+    box-shadow:
+      inset 0 8px 12px rgba(255,255,255,0.38),
+      inset 0 -13px 18px rgba(0,0,0,0.44);
+    filter:saturate(1.24) contrast(1.08);
+  }
+
+  .secondary-band .fill{
+    animation:broadcastSpin var(--sec-spin-speed) linear infinite reverse;
+  }
+
+  .ring-band .fill::before{
+    content:"";
+    position:absolute;
+    inset:6px;
+    border-radius:50%;
+    border:8px solid rgba(255,255,255,0.28);
+    border-bottom-color:rgba(0,0,0,0.34);
+    border-right-color:rgba(0,0,0,0.24);
+    mix-blend-mode:screen;
+    opacity:0.86;
+  }
+
+  .ring-band .fill::after{
+    content:"";
+    position:absolute;
+    inset:-8px;
+    border-radius:50%;
+    background:conic-gradient(from 18deg, transparent 0 34deg, rgba(255,255,255,0.82) 48deg, transparent 74deg, transparent 180deg, rgba(255,255,255,0.34) 216deg, transparent 250deg, transparent 360deg);
+    filter:blur(1px);
+    opacity:0.86;
+  }
+
+  /* 3D Torus Bevel Crown & Inner/Outer Wall Rim Shading */
+  .ring-band .bevel-rim{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    background:
+      radial-gradient(
+        closest-side,
+        transparent calc(100% - var(--band-width)),
+        rgba(0, 0, 0, 0.55) calc(100% - var(--band-width) + 1px),
+        rgba(255, 255, 255, 0.52) calc(100% - var(--band-width) + 3.5px),
+        transparent calc(100% - var(--band-width) + 9px),
+        rgba(255, 255, 255, 0.38) calc(100% - var(--band-width) * 0.48),
+        transparent calc(100% - 7px),
+        rgba(255, 255, 255, 0.52) calc(100% - 3px),
+        rgba(0, 0, 0, 0.48) 100%
+      );
+    mix-blend-mode:overlay;
+    pointer-events:none;
+  }
+
+  /* Crisp Inner Hole Rim & Outer Edge Stroke (for Primary Continuous Ring) */
+  .primary-band .inner-hole-edge{
+    position:absolute;
+    inset:calc(var(--band-width) - 1px);
+    border-radius:50%;
+    box-shadow:
+      0 0 0 1.5px rgba(255,255,255,0.4),
+      0 3px 6px rgba(0,0,0,0.48),
+      inset 0 4px 8px rgba(0,0,0,0.45);
+    pointer-events:none;
+  }
+
+  /* 3D End-Cap & Rim Edge Highlights for Segmented Outer Tactical Bars */
+  .secondary-band .segment-caps{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    box-shadow:
+      inset 0 0 0 1.5px rgba(255,255,255,0.46),
+      inset 0 2px 4px rgba(255,255,255,0.5);
+    background:
+      radial-gradient(
+        closest-side,
+        transparent calc(100% - var(--band-width)),
+        rgba(255,255,255,0.42) calc(100% - var(--band-width) + 1.5px),
+        transparent calc(100% - var(--band-width) + 4px),
+        transparent calc(100% - 3.5px),
+        rgba(255,255,255,0.46) calc(100% - 1.5px),
+        transparent 100%
+      );
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,0.55));
+    pointer-events:none;
+  }
+
+  /* Glass Surface Reflection */
+  .ring-band .glass{
+    position:absolute;
+    inset:1px;
+    border-radius:50%;
+    background:linear-gradient(145deg, rgba(255,255,255,0.54), transparent 30%, transparent 62%, rgba(0,0,0,0.32));
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.36);
+    mix-blend-mode:soft-light;
+    pointer-events:none;
+  }
+
+  /* Orbiting Specular Streak */
+  .ring-band .specular-streak{
+    position:absolute;
+    inset:-4px;
+    border-radius:50%;
+    pointer-events:none;
+    animation:specularOrbit 1.24s cubic-bezier(0.42, 0, 0.18, 1) infinite;
+    mix-blend-mode:screen;
+    filter:drop-shadow(0 0 8px rgba(255,255,255,0.75));
+  }
+
+  /* Clip the outer specular streak to the segmented bars so it glints across each bar! */
+  .secondary-band .specular-streak{
+    inset:0;
+    -webkit-mask-image: var(--radial-ring-mask), var(--segment-conic);
+    -webkit-mask-composite: source-in;
+    mask-image: var(--radial-ring-mask), var(--segment-conic);
+    mask-composite: intersect;
+    animation:none;
+  }
+
+  .ring-band .specular-streak::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    background:
+      conic-gradient(from -14deg,
+        transparent 0deg 16deg,
+        rgba(255,255,255,0.06) 22deg,
+        rgba(255,255,255,0.95) 32deg,
+        rgba(255,255,255,0.75) 42deg,
+        transparent 58deg 360deg);
+    -webkit-mask:
+      radial-gradient(
+        farthest-side,
+        transparent calc(100% - var(--band-width) + 2px),
+        #000 calc(100% - var(--band-width) + 4px) calc(100% - 8px),
+        transparent calc(100% - 6px)
+      );
+    mask:
+      radial-gradient(
+        farthest-side,
+        transparent calc(100% - var(--band-width) + 2px),
+        #000 calc(100% - var(--band-width) + 4px) calc(100% - 8px),
+        transparent calc(100% - 6px)
+      );
+  }
+
+  .secondary-band .specular-streak::before{
+    animation:specularOrbit 1.6s cubic-bezier(0.42, 0, 0.18, 1) infinite reverse;
+  }
+
+  .primary-band .specular-streak::after{
+    content:"";
+    position:absolute;
+    top:calc(var(--band-width) * 0.35);
+    left:50%;
+    width:26px;
+    height:10px;
+    border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,255,255,0.98), rgba(255,255,255,0.42) 52%, transparent 74%);
+    transform:translateX(-50%) rotate(-10deg);
+    filter:blur(0.4px);
+  }
+
+  /* Outer Rim Glow & Definition Stroke (Primary Ring) */
+  .primary-band .stroke{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    box-shadow:
+      0 0 0 1.5px rgba(255,255,255,0.44) inset,
+      0 0 0 3px rgba(0,0,0,0.16) inset,
+      0 0 18px color-mix(in srgb, var(--ring-color), transparent 36%),
+      0 0 3px rgba(255,255,255,0.72);
+    pointer-events:none;
+  }
+
+  /* Ambient Broadcast Glow for Segmented Outer Ring */
+  .secondary-band .stroke{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    -webkit-mask-image: var(--radial-ring-mask), var(--segment-conic);
+    -webkit-mask-composite: source-in;
+    mask-image: var(--radial-ring-mask), var(--segment-conic);
+    mask-composite: intersect;
+    box-shadow:
+      0 0 0 1.5px rgba(255,255,255,0.5) inset,
+      0 0 16px color-mix(in srgb, var(--ring-color), transparent 32%);
+    pointer-events:none;
+  }
+
+  @keyframes broadcastSpin{
+    to{ transform:rotate(360deg); }
+  }
+
+  @keyframes outerTacticalOrbit{
+    to{ transform:rotate(-360deg); }
+  }
+
+  @keyframes specularOrbit{
+    0%{ transform:rotate(0deg); opacity:0; }
+    7%{ opacity:1; }
+    58%{ opacity:0.92; }
+    72%{ opacity:0; }
+    100%{ transform:rotate(360deg); opacity:0; }
+  }
+
+  @keyframes ringEntrance{
+    0%{
+      transform:rotateX(var(--tilt-deg)) scale(0.52);
+      opacity:0;
+      filter:blur(3px);
+    }
+    58%{ transform:rotateX(var(--tilt-deg)) scale(1.08); }
+    100%{
+      transform:rotateX(var(--tilt-deg)) scale(1);
+      opacity:1;
+      filter:blur(0);
+    }
+  }
+
+  @media (max-width:960px){
+    .controller{
+      width:calc(100vw - 24px);
+      justify-content:center;
+      flex-wrap:wrap;
+      gap:10px 14px;
+    }
+    .divider{ display:none; }
+    .controller input[type="range"]{ width:100px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hud-hint">
+  <span>BROADCAST TELESTRATION 3D</span> • CLICK PITCH TO PLACE MARKER • DRAG TO REPOSITION
+</div>
+
+<div class="controller" aria-label="Ring controls">
+  <label class="control-group" for="tiltSlider">
+    Tilt
+    <input id="tiltSlider" type="range" min="0" max="65" value="28">
+    <span id="tiltValue">28°</span>
+  </label>
+
+  <div class="divider"></div>
+
+  <div class="control-group">
+    Color
+    <input id="colorPicker" type="color" value="#00eaff" title="Custom Ring Color">
+    <div class="swatches" id="swatchGroup">
+      <button type="button" class="swatch active" data-color="#00eaff" style="background:#00eaff" title="Broadcast Cyan"></button>
+      <button type="button" class="swatch" data-color="#ffcc00" style="background:#ffcc00" title="Tactical Gold"></button>
+      <button type="button" class="swatch" data-color="#ff2a55" style="background:#ff2a55" title="Target Crimson"></button>
+      <button type="button" class="swatch" data-color="#39ff14" style="background:#39ff14" title="Telemetry Lime"></button>
+      <button type="button" class="swatch" data-color="#ffffff" style="background:#ffffff" title="Pure Broadcast White"></button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <label class="control-group" for="patternSelect">
+    Outer Bars
+    <select id="patternSelect">
+      <option value="telemetry-8" selected>8 Telemetry Bars</option>
+      <option value="brackets-4">4 Tactical Brackets</option>
+      <option value="stamina-12">12 Stamina Blocks</option>
+      <option value="asymmetric-hud">Asymmetric Broadcast HUD</option>
+      <option value="continuous">Continuous Dual Ring</option>
+    </select>
+  </label>
+
+  <label class="control-group" for="orbitToggle" title="Slowly counter-rotate the segmented outer 3D ring">
+    <input id="orbitToggle" type="checkbox" checked>
+    Orbit
+  </label>
+
+  <label class="control-group" for="secondaryToggle" title="Show/Hide Outer 3D Ring">
+    <input id="secondaryToggle" type="checkbox" checked>
+    2nd Ring
+  </label>
+
+  <button id="clearBtn" class="clear-btn" type="button">Clear</button>
+</div>
+
+<script>
+let tiltDeg = 28;
+let baseColor = '#00eaff';
+let currentPattern = 'telemetry-8';
+let orbitEnabled = true;
+let showSecondary = true;
+
+const ringSize = 148;
+const tiltSlider = document.getElementById('tiltSlider');
+const tiltValue = document.getElementById('tiltValue');
+const colorPicker = document.getElementById('colorPicker');
+const swatchGroup = document.getElementById('swatchGroup');
+const patternSelect = document.getElementById('patternSelect');
+const orbitToggle = document.getElementById('orbitToggle');
+const secondaryToggle = document.getElementById('secondaryToggle');
+const clearBtn = document.getElementById('clearBtn');
+
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+function hexToRgb(hex){
+  hex = hex.replace('#','');
+  if(hex.length === 3) hex = hex.split('').map(c=>c+c).join('');
+  const n = parseInt(hex,16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+function rgbToHex(r,g,b){
+  return '#' + [r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function shiftColor(hex, amt){
+  const [r,g,b] = hexToRgb(hex);
+  const f = (c) => clamp(Math.round(c + (amt/100)*255), 0, 255);
+  return rgbToHex(f(r), f(g), f(b));
+}
+
+function paintRing(ring, color){
+  ring.style.setProperty('--ring-color', color);
+  ring.style.setProperty('--ring-deep', shiftColor(color, -24));
+  ring.style.setProperty('--ring-dark', shiftColor(color, -48));
+  ring.style.setProperty('--ring-light', shiftColor(color, 30));
+  ring.style.setProperty('--ring-hot', shiftColor(color, 58));
+}
+
+function setRingTilt(ring){
+  ring.style.setProperty('--tilt-deg', `${tiltDeg}deg`);
+  ring.style.transform = `rotateX(${tiltDeg}deg)`;
+}
+
+function createLayer(className){
+  const layer = document.createElement('div');
+  layer.className = className;
+  return layer;
+}
+
+/* Builds an extruded 3D broadcast ring band (continuous inner or segmented tactical outer) */
+function create3DRingBand(bandTypeClass){
+  const band = createLayer(`ring-band ${bandTypeClass}`);
+
+  // 3D depth extrusion layers (all masked to the exact segment/ring shape)
+  band.appendChild(createLayer('body-layer body-layer-4'));
+  band.appendChild(createLayer('body-layer body-layer-3'));
+  band.appendChild(createLayer('body-layer body-layer-2'));
+  band.appendChild(createLayer('body-layer body-layer-1'));
+
+  // Masked rotating broadcast gradient fill
+  const fillMask = createLayer('fill-mask');
+  fillMask.appendChild(createLayer('fill'));
+  band.appendChild(fillMask);
+
+  // 3D torus bevel shading, segment end-cap rims, glass & specular highlights
+  band.appendChild(createLayer('bevel-rim'));
+  if (bandTypeClass === 'secondary-band') {
+    band.appendChild(createLayer('segment-caps'));
+  } else {
+    band.appendChild(createLayer('inner-hole-edge'));
+  }
+  band.appendChild(createLayer('glass'));
+  band.appendChild(createLayer('specular-streak'));
+  band.appendChild(createLayer('stroke'));
+
+  return band;
+}
+
+function spawnRing(clientX, clientY){
+  const ring = document.createElement('div');
+  ring.className = 'ring'
+    + (showSecondary ? '' : ' hide-secondary')
+    + (orbitEnabled ? '' : ' pause-orbit');
+  ring.dataset.pattern = currentPattern;
+  ring.style.left = (clientX - ringSize / 2) + 'px';
+  ring.style.top = (clientY - ringSize / 2) + 'px';
+  ring.style.animation = 'ringEntrance 420ms cubic-bezier(0.2, 0.9, 0.25, 1.25) both';
+  ring.style.setProperty('--spin-speed', `${(2.1 + Math.random() * 0.5).toFixed(2)}s`);
+  ring.style.setProperty('--sec-spin-speed', `${(2.6 + Math.random() * 0.6).toFixed(2)}s`);
+
+  paintRing(ring, baseColor);
+  setRingTilt(ring);
+
+  ring.appendChild(createLayer('contact-shadow'));
+  // Secondary outer 3D segmented tactical ring (28px thick, minimal 5px gap)
+  ring.appendChild(create3DRingBand('secondary-band'));
+  // Primary inner continuous 3D ring (34px thick)
+  ring.appendChild(create3DRingBand('primary-band'));
+
+  makeRingDraggable(ring);
+  document.body.appendChild(ring);
+}
+
+/* Drag support so placed rings can be repositioned smoothly */
+let justDragged = false;
+function makeRingDraggable(ring){
+  let dragging = false;
+  let startX = 0, startY = 0, origLeft = 0, origTop = 0;
+
+  ring.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    dragging = true;
+    justDragged = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    origLeft = parseFloat(ring.style.left) || 0;
+    origTop = parseFloat(ring.style.top) || 0;
+    ring.setPointerCapture(e.pointerId);
+  });
+
+  ring.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) justDragged = true;
+    ring.style.left = (origLeft + dx) + 'px';
+    ring.style.top = (origTop + dy) + 'px';
+  });
+
+  ring.addEventListener('pointerup', (e) => {
+    if (!dragging) return;
+    dragging = false;
+    ring.releasePointerCapture(e.pointerId);
+    setTimeout(() => { justDragged = false; }, 30);
+  });
+}
+
+document.addEventListener('click', (e) => {
+  if (justDragged) return;
+  if (e.target.closest('.controller') || e.target.closest('.ring')) return;
+  spawnRing(e.clientX, e.clientY);
+});
+
+tiltSlider.addEventListener('input', () => {
+  tiltDeg = Number(tiltSlider.value);
+  tiltValue.textContent = tiltDeg + '°';
+  document.querySelectorAll('.ring').forEach(setRingTilt);
+});
+
+function applyColorSelection(color){
+  baseColor = color;
+  colorPicker.value = color;
+  document.querySelectorAll('.swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color.toLowerCase() === color.toLowerCase());
+  });
+  document.querySelectorAll('.ring').forEach(r => paintRing(r, baseColor));
+}
+
+colorPicker.addEventListener('input', () => {
+  applyColorSelection(colorPicker.value);
+});
+
+swatchGroup.addEventListener('click', (e) => {
+  const btn = e.target.closest('.swatch');
+  if (!btn) return;
+  applyColorSelection(btn.dataset.color);
+});
+
+patternSelect.addEventListener('change', () => {
+  currentPattern = patternSelect.value;
+  document.querySelectorAll('.ring').forEach(r => {
+    r.dataset.pattern = currentPattern;
+  });
+});
+
+orbitToggle.addEventListener('change', () => {
+  orbitEnabled = orbitToggle.checked;
+  document.querySelectorAll('.ring').forEach(r => {
+    r.classList.toggle('pause-orbit', !orbitEnabled);
+  });
+});
+
+secondaryToggle.addEventListener('change', () => {
+  showSecondary = secondaryToggle.checked;
+  document.querySelectorAll('.ring').forEach(r => {
+    r.classList.toggle('hide-secondary', !showSecondary);
+  });
+});
+
+clearBtn.addEventListener('click', () => {
+  document.querySelectorAll('.ring').forEach(r => r.remove());
+});
+
+// Spawn an initial showcase broadcast 3D tactical ring on load
+window.addEventListener('DOMContentLoaded', () => {
+  spawnRing(window.innerWidth / 2, window.innerHeight * 0.44);
+});
+</script>
+</body>
+</html>

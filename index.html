@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tacstem</title>
+    
+    <!-- Primary Metadata -->
+    <meta name="title" content="Tacstem" />
+    <meta name="description" content="Professional sports video analysis, multi-angle telestration, dynamic tactical board animations, and live match coding workspace." />
+    <meta name="keywords" content="Tacstem, sports video analysis, tactical board, football telestration, soccer tactics, match tagging, coaching video analysis" />
+    <meta name="author" content="Tacstem" />
+    <meta name="robots" content="index, follow" />
+    <meta name="application-name" content="Tacstem" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="canonical" href="/" />
+    
+    <!-- Mobile & PWA Configuration -->
+    <meta name="theme-color" content="#0a0a0c" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Tacstem" />
+    <meta name="msapplication-TileColor" content="#0a0a0c" />
+
+    <!-- OpenGraph / Social Cards -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Tacstem" />
+    <meta property="og:title" content="Tacstem" />
+    <meta property="og:description" content="Professional sports video analysis, multi-angle telestration, dynamic tactical board animations, and live match coding workspace." />
+    <meta property="og:url" content="/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="/pwa-512x512.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="Tacstem" />
+
+    <!-- Twitter / X Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Tacstem" />
+    <meta name="twitter:description" content="Professional sports video analysis, multi-angle telestration, dynamic tactical board animations, and live match coding workspace." />
+    <meta name="twitter:image" content="/pwa-512x512.png" />
+    <meta name="twitter:image:alt" content="Tacstem" />
+
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Dynamic Canonical & Social URL Resolution -->
+    <script>
+      (function() {
+        try {
+          var currentUrl = window.location.origin + window.location.pathname;
+          var canonicalLink = document.querySelector('link[rel="canonical"]');
+          if (canonicalLink) {
+            canonicalLink.setAttribute('href', currentUrl);
+          }
+          var ogUrlMeta = document.querySelector('meta[property="og:url"]');
+          if (ogUrlMeta) {
+            ogUrlMeta.setAttribute('content', currentUrl);
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Tacstem",
+      "applicationCategory": "SportsApplication, MultimediaApplication",
+      "operatingSystem": "All",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "description": "Professional sports video analysis, multi-angle telestration, dynamic tactical board animations, and live match coding workspace.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Tactical Video Analysis & Multi-angle Telestration",
+        "Interactive 2D & 3D Tactical Pitch Board Animations",
+        "Live Match Coding and Real-time Event Tagging",
+        "Batch Multi-Game Video Management and Playlists",
+        "Hardware-Accelerated In-Browser Video Export Engine"
+      ]
+    }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@600;700;800&family=Outfit:wght@600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+      *:not(.creator-wm-custom-font) {
+        font-family: 'IBM Plex Sans', sans-serif !important;
+      }
+      body {
+        background-color: #0f0f0f;
+        color: #ffffff;
+        overflow: hidden;
+      }
+      .select-none,
+      .select-none *:not(input):not(textarea):not([contenteditable="true"]):not(.select-text) {
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+        -webkit-touch-callout: none !important;
+      }
+      .select-text,
+      .select-text * {
+        -webkit-user-select: text !important;
+        -moz-user-select: text !important;
+        -ms-user-select: text !important;
+        user-select: text !important;
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1a1a1a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #333;
+        border-radius: 3px;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none !important;
+        scrollbar-width: none !important;
+      }
+      .btn-glow {
+        position: relative;
+        transition: all 0.2s ease;
+        background: #c6ff1f;
+        color: #0a0a0c;
+        font-weight: 600;
+      }
+      .btn-glow:hover {
+        background: #d4ff4d;
+        box-shadow: 0 0 25px rgba(198, 255, 31, 0.35);
+        transform: translateY(-1px);
+      }
+      .btn-glow:active {
+        transform: scale(0.98);
+      }
+      .scrollbar-glass {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+      }
+      .scrollbar-glass::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+      }
+      .scrollbar-glass::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .scrollbar-glass::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        border: 3px solid transparent;
+        background-clip: padding-box;
+      }
+      .scrollbar-glass::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+      .scrollbar-panel {
+        scrollbar-width: thin;
+        scrollbar-color: #334155 transparent;
+      }
+      .scrollbar-panel::-webkit-scrollbar {
+        width: 14px;
+        height: 14px;
+      }
+      .scrollbar-panel::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .scrollbar-panel::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 10px;
+        border: 4px solid #0e1422;
+        background-clip: padding-box;
+      }
+      .scrollbar-panel::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+        border: 4px solid #0e1422;
+        background-clip: padding-box;
+      }
+      .scrollbar-pitch::-webkit-scrollbar-thumb {
+        border-color: #22c55e;
+      }
+      @keyframes border-beam-spin {
+        0% {
+          transform: translate(-50%, -50%) rotate(0deg);
+        }
+        100% {
+          transform: translate(-50%, -50%) rotate(360deg);
+        }
+      }
+      .animate-border-beam-green {
+        animation: border-beam-spin 2.2s linear infinite;
+      }
+      .animate-border-beam-violet {
+        animation: border-beam-spin 3.2s linear infinite;
+      }
+      .animate-border-beam-amber {
+        animation: border-beam-spin 2.2s linear infinite;
+      }
+    </style>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,316 @@
+{
+  "entities": {
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Explicit administrator privilege grant for non-bootstrapped accounts.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 254 },
+        "grantedBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "grantedBy", "createdAt", "updatedAt"]
+    },
+    "UserEntitlement": {
+      "title": "UserEntitlement",
+      "description": "Account plan entitlement, onboarding metadata, and admin promotion state. Contains zero workspace/video data.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 254 },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "personas": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["analyst", "coach", "content_creator"] }
+        },
+        "onboarded": { "type": "boolean" },
+        "plan": { "type": "string", "enum": ["free", "pro"] },
+        "isAdmin": { "type": "boolean" },
+        "previousPlan": { "type": "string", "enum": ["none", "free", "pro"] },
+        "demotedAtMs": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAtMs": { "type": "number" },
+        "planUpdatedAtMs": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "email",
+        "photoURL",
+        "personas",
+        "onboarded",
+        "plan",
+        "isAdmin",
+        "previousPlan",
+        "demotedAtMs",
+        "notes",
+        "createdAtMs",
+        "planUpdatedAtMs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserStats": {
+      "title": "UserStats",
+      "description": "Metadata-only numeric usage counts for Admin Console analytics. Never stores project videos, events, or drawings.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 254 },
+        "personas": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["analyst", "coach", "content_creator"] }
+        },
+        "plan": { "type": "string", "enum": ["free", "pro"] },
+        "sessionsCount": { "type": "number" },
+        "videoProjectsCount": { "type": "number" },
+        "liveProjectsCount": { "type": "number" },
+        "boardProjectsCount": { "type": "number" },
+        "batchesCount": { "type": "number" },
+        "totalProjectsCount": { "type": "number" },
+        "totalEventsCount": { "type": "number" },
+        "totalActiveTagsCount": { "type": "number" },
+        "totalFreezeFramesCount": { "type": "number" },
+        "totalShapesCount": { "type": "number" },
+        "totalPlaylistClipsCount": { "type": "number" },
+        "projects": { "type": "object" },
+        "createdAtMs": { "type": "number" },
+        "lastActiveAtMs": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "email",
+        "personas",
+        "plan",
+        "sessionsCount",
+        "videoProjectsCount",
+        "liveProjectsCount",
+        "boardProjectsCount",
+        "batchesCount",
+        "totalProjectsCount",
+        "totalEventsCount",
+        "totalActiveTagsCount",
+        "totalFreezeFramesCount",
+        "totalShapesCount",
+        "totalPlaylistClipsCount",
+        "projects",
+        "createdAtMs",
+        "lastActiveAtMs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UpgradeRequest": {
+      "title": "UpgradeRequest",
+      "description": "Free user request for complimentary Pro account promotion reviewed in the Admin Console.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 254 },
+        "personas": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["analyst", "coach", "content_creator"] }
+        },
+        "organization": { "type": "string", "maxLength": 160 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["pending", "approved", "declined"] },
+        "reviewedBy": { "type": "string", "maxLength": 254 },
+        "adminNote": { "type": "string", "maxLength": 500 },
+        "createdAtMs": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "email",
+        "personas",
+        "organization",
+        "message",
+        "status",
+        "reviewedBy",
+        "adminNote",
+        "createdAtMs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PushNotificationDoc": {
+      "title": "PushNotificationDoc",
+      "description": "Broadcast push notification managed via Admin Console.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 2500 },
+        "category": { "type": "string", "enum": ["announcement", "tutorial", "feature", "update", "alert", "system"] },
+        "targetAudience": { "type": "string", "enum": ["all", "analysts", "coaches", "content_creators"] },
+        "priority": { "type": "string", "enum": ["normal", "high"] },
+        "linkType": { "type": "string", "enum": ["tutorial", "url", "tab", "external", "none"] },
+        "link": { "type": "string", "maxLength": 500 },
+        "sentBy": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "authorId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "visibility": { "type": "string", "enum": ["public", "draft"] },
+        "timestampMs": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "title",
+        "message",
+        "category",
+        "targetAudience",
+        "priority",
+        "linkType",
+        "link",
+        "sentBy",
+        "authorId",
+        "visibility",
+        "timestampMs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TutorialDoc": {
+      "title": "TutorialDoc",
+      "description": "Video Academy tutorial entry curated by administrators.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "youtubeUrl": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "youtubeId": { "type": "string", "minLength": 11, "maxLength": 11, "pattern": "^[a-zA-Z0-9_-]{11}$" },
+        "folderId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "folderName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "duration": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "recommended": { "type": "boolean" },
+        "tags": { "type": "array", "items": { "type": "string", "maxLength": 40 } },
+        "author": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "visibility": { "type": "string", "enum": ["public", "draft"] },
+        "createdAtMs": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "youtubeUrl",
+        "youtubeId",
+        "folderId",
+        "folderName",
+        "duration",
+        "recommended",
+        "tags",
+        "author",
+        "visibility",
+        "createdAtMs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TutorialFolderDoc": {
+      "title": "TutorialFolderDoc",
+      "description": "Video Academy curriculum folder managed by administrators.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 500 },
+        "iconName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "order": { "type": "number" },
+        "visibility": { "type": "string", "enum": ["public", "draft"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "description", "iconName", "order", "visibility", "createdAt", "updatedAt"]
+    },
+    "PlatformSettings": {
+      "title": "PlatformSettings",
+      "description": "Global platform quotas, upgrade flow configuration, announcement banner, and academy metadata.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "enum": ["global"] },
+        "freeMaxVideoProjects": { "type": "number" },
+        "freeMaxBoardProjects": { "type": "number" },
+        "freeAllowBatches": { "type": "boolean" },
+        "allowInstantFreeUpgrade": { "type": "boolean" },
+        "announcementEnabled": { "type": "boolean" },
+        "announcementText": { "type": "string", "maxLength": 300 },
+        "announcementLink": { "type": "string", "maxLength": 300 },
+        "academyTitle": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "academySubtitle": { "type": "string", "maxLength": 300 },
+        "supportContactAddress": { "type": "string", "maxLength": 254 },
+        "founderLinkedInUrl": { "type": "string", "maxLength": 300 },
+        "visibility": { "type": "string", "enum": ["public"] },
+        "updatedBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "freeMaxVideoProjects",
+        "freeMaxBoardProjects",
+        "freeAllowBatches",
+        "allowInstantFreeUpgrade",
+        "announcementEnabled",
+        "announcementText",
+        "announcementLink",
+        "academyTitle",
+        "academySubtitle",
+        "supportContactAddress",
+        "founderLinkedInUrl",
+        "visibility",
+        "updatedBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminRole" },
+      "description": "Administrator privilege markers."
+    },
+    "/user_entitlements/{userId}": {
+      "schema": { "$ref": "#/entities/UserEntitlement" },
+      "description": "Account plan and admin promotion records."
+    },
+    "/user_stats/{userId}": {
+      "schema": { "$ref": "#/entities/UserStats" },
+      "description": "Metadata-only numeric usage counts for Admin analytics."
+    },
+    "/upgrade_requests/{userId}": {
+      "schema": { "$ref": "#/entities/UpgradeRequest" },
+      "description": "Free user upgrade requests queued for Admin review."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/PushNotificationDoc" },
+      "description": "Broadcast push notifications."
+    },
+    "/tutorials/{tutorialId}": {
+      "schema": { "$ref": "#/entities/TutorialDoc" },
+      "description": "Video Academy tutorials."
+    },
+    "/tutorial_folders/{folderId}": {
+      "schema": { "$ref": "#/entities/TutorialFolderDoc" },
+      "description": "Video Academy curriculum folders."
+    },
+    "/app_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/PlatformSettings" },
+      "description": "Global platform configuration."
+    }
+  }
+}
